@@ -1,0 +1,65 @@
+os: linux
+
+dist: xenial
+
+sudo: required
+
+git:
+  depth: 3
+
+addons:
+  apt:
+    update:
+    - true
+
+before_install:
+  - git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 ~/toolchain/
+  - sudo chmod -R a+x ~/toolchain/*
+
+install: true
+
+matrix:
+  include:
+    - name: "Built for gnsz6735_66_n_defconfig"
+      env: DEFCONFIG=gnsz6735_66_n_defconfig
+    - name: "Built for gnsz6735m_65_n_defconfig"
+      env: DEFCONFIG=gnsz6735m_65_n_defconfig
+    - name: "Built for gnsz6737m_65_n_defconfig"
+      env: DEFCONFIG=gnsz6737m_65_n_defconfig
+    - name: "Built for gnsz6737t_66_n_defconfig"
+      env: DEFCONFIG=gnsz6737t_66_n_defconfig
+    - name: "Built for gnsz6753_66_n_defconfig"
+      env: DEFCONFIG=gnsz6753_66_n_defconfig
+
+script:
+  - mkdir out
+  - make O=out clean
+  - make O=out mrproper
+  - export CROSS_COMPILE=~/toolchain/bin/aarch64-linux-android-
+  - export ARCH=arm64 
+  - export KBUILD_BUILD_USER="fr3aky"
+  - export KBUILD_BUILD_HOST="Phantom_Zone"
+  - export ARCH_MTK_PLATFORM=mt6735
+  - make O=out ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $DEFCONFIG
+  - make O=out ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j32
+  - KERNEL_DIR=$PWD
+  - cp $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $KERNEL_DIR/out/arch/arm64/boot/$DEFCONFIG-n_zImage
+  - ZIMAGE=$KERNEL_DIR/out/arch/arm64/boot/$DEFCONFIG-n_zImage
+
+after_success:
+  - curl --upload-file $ZIMAGE https://transfer.sh/ && echo ""
+
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: wQnEG7G74G9+LTm2817DuM5fuRkwlpf0HB2n0mk3rQsi+QraDwce6wsqGx9MzHjYhnGWQolO7NPBnAW61X4YxrPykfBZV+aJHPlH7cLKPoSSSwm3lvNJqzDWtw/jivgVxhziZHqOq759vaC+NhOSc691Ss6nbY4ejJPdN+0iGN+bNkLHN3GnE/hpz5oIJ3iyKVhRWCs+6fqUFZ4Sf5D5OvxOUBtxiGcSRDSeiHmEz7wC34VdLZrUWQc8Q9bmp3PJxeuVFIzhU87hlikHvcQbkzqUtAxbMEfi+hTfKh9XfcEwyd73tuTDzSWxFx58wQ4JIEalxM+DnTePKzJip23Px/bxxQ66UDiNMZfNqXgzjEAuZYJBYXypMu7ZxW8eDPXHg2sxKpXNbgeMn52cg2SPAOLfLL9P0k8gzcq20LZLQa0IeWWpWXvH+TpsenvOLuoRszSFqH5MRtDbS4xDEdSz9hzNXtsgQcNvT/Kj1XKY2DsSy7N0rsASIEsGOIqqMC5Uoe964RjX8GgjDuxctUhlYVgpBWH6Fqc3EH1wUIwwfgSBReFbOVjqBWNxHmNTijekLsSVWdgWPTEeOVqrlx2nU6no7kvxFMupclqGWebrI7qDX4MLrOcaPZPAnk/rcTB57PhuyJWgD+0DjGi5mcekT+46fkbAE71BAAgCZSn9ZMM=
+  file: $ZIMAGE
+  on:
+    tags: false
+    repo: PhantomZone54/a8-update
+    branch: master
+
+branches:
+  except:
+    - /^(?i:untagged)-.*$/
